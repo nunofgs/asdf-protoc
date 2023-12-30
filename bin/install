@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bash -x
 
 set -eo pipefail
 
@@ -46,7 +46,15 @@ install_protoc() {
   local download_path="${TMP_DIR}/protoc.zip"
 
   echo "Downloading ${url}"
-  curl -fsSL "${url}" -o "${download_path}"
+  curl -fsSL "${url}" -o "${download_path}" || exit_code=$?
+
+  # if the curl command exits with a non-zero exit code, and the arch is aarch_64, try again with x86_64
+  if [[ $exit_code -ne 0 && $(get_arch) == "aarch_64" ]]; then
+    echo "Failed to download protoc for aarch_64, trying x86_64 (pre-Apple Silicon versions)"
+
+    local url="${base_url}/v${version}/protoc-${version}-$(get_platform)-x86_64.zip"
+    curl -fsSL "${url}" -o "${download_path}"
+  fi
 
   unzip -qq "${download_path}" -d "${install_path}"
 }
